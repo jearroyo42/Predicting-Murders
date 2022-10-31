@@ -1,4 +1,6 @@
 # Math-180-Project
+Group Members: Oscar Cortes, Jessie Arroyo, David Lee, Rebecca Serrato
+
 This is my Data Analysis project for the course Math 180 offered by UC Merced. 
 My contributions to this project are loading in the data, splitting the data, normalizing the data and peforming Lasso Regression onto the data. 
 I peformed a Lasso regression to the Unnormalized Crime and Communities Data set offered by the UC Irvine Machine Learning Reporository to see which predictors are the most important to our analysis. 
