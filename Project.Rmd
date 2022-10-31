@@ -1,0 +1,255 @@
+---
+title: "Math 180 Project"
+author: "Jessie Arroyo, Rebecca Serrato, David Lee, Oscar Cortes Torres"
+date: "2022-09-21"
+output: html_document
+---
+
+
+## Reading the Data and Renaming some of the column names
+```{r}
+#setwd("~/Downloads/CrimeData") Setting a Directory
+CrimeData <- read.csv("~/Downloads/CrimeData/crimedata.csv", na.strings="?", stringsAsFactors=TRUE)
+colnames(CrimeData)[1] <- "Community Name" #Renaming
+colnames(CrimeData)[3] <- "County Code" #Renaming
+colnames(CrimeData)[4] <- "Community Code" #Renaming
+
+# Viewing Dimension of the Dataset
+dim(CrimeData)
+```
+
+## Using Min-Max standardization to normalize the data 
+
+1. Download caret, to download caret, we click on "tools" then after click on "install packages", then search for "carnet" and click install 
+```{r}
+#minMax <- function(x) {
+   # (x - min(x)) / (max(x) - min(x))
+ # }
+#normalizeCrimeData <- as.data.frame(lapply(CrimeData[6:147], minMax))
+#apply Min-Max normalization to first four columns in iris dataset
+#iris_norm <- as.data.frame(lapply(iris[1:4], min_max_norm))
+#normalizeCrimeData
+
+library(caret)
+pp = preProcess(CrimeData, method = "range")
+crimedata = predict(pp, CrimeData)
+#Viewing Data
+crimedata = na.omit(crimedata)
+
+#removing Community Name, State, Community Code 
+crimedata <- crimedata[ -c(1,0:5) ]
+
+#Viewing the amount of rows and columns
+ncol(crimedata)
+nrow(crimedata)
+
+```
+
+## Splitting the Data into training and testing. 
+```{r}
+train = sample(nrow(crimedata), 0.6*nrow(crimedata)) #splitting the data
+CrimeTr = crimedata[train,] #Creating Training Data set
+CrimeTe = crimedata[-train,] # Creating test Data 
+dim(CrimeTr)
+dim(CrimeTe)
+```
+
+## Lasso Regression:Viewing The most imporant variables for Each Response Variable. 
+1. Murder per Population
+2. Robberies per Population
+3. Rapes per Population
+4. Assaults per Population
+5. Larcenies per Population
+6. Auto Thief per population
+7. Arson per Population
+
+1. Murder Per Population- Lasso
+```{r}
+x= model.matrix(murdPerPop ~., CrimeTr)[,-1]
+y = CrimeTr$murdPerPop
+xtest = model.matrix(murdPerPop ~., CrimeTe)[,-1]
+xcrime = model.matrix(murdPerPop ~., crimedata)[,-1]
+ycrime = crimedata$murdPerPop
+set.seed(1)
+
+library(glmnet)
+#Cross Validation
+cv.out = cv.glmnet(x, y, alpha = 1)
+
+#Predicting Model
+lasso.pred = predict(cv.out, s = cv.out$lambda.min, newx = xtest)
+mean((lasso.pred - CrimeTe$murdPerPop)^2)
+
+#Fitting Model
+out = glmnet(xcrime,ycrime, alpha = 1)
+
+#Finding the Valuable Variables 
+lasso.coef = predict(out,type = 'coefficients',s = cv.out$lambda.min)[1:142,]
+```
+
+2. Robberies Per Population
+```{r}
+xrobb= model.matrix(robbbPerPop ~., CrimeTr)[,-1]
+yrobb = CrimeTr$robbbPerPop
+xtestrobb = model.matrix(robbbPerPop ~., CrimeTe)[,-1]
+xcrimerobb = model.matrix(robbbPerPop ~., crimedata)[,-1]
+ycrimerobb = crimedata$robbbPerPop
+set.seed(1)
+
+library(glmnet)
+#Cross Validation
+cv.outrobb = cv.glmnet(xrobb, yrobb, alpha = 1)
+
+#Predicting Model
+lasso.predrobb = predict(cv.outrobb, s = cv.outrobb$lambda.min, newx = xtest)
+mean((lasso.predrobb - CrimeTe$robbbPerPop)^2)
+
+#Fitting Model
+robb.out = glmnet(xcrimerobb,ycrimerobb, alpha = 1)
+
+#Finding the Valuable Variables 
+lasso.coefrobb = predict(robb.out,type = 'coefficients',s = cv.outrobb$lambda.min)[1:142,]
+```
+
+3. Rapes per Population(rpp)
+```{r}
+x_rpp= model.matrix(rapesPerPop ~., CrimeTr)[,-1]
+y_rpp = CrimeTr$rapesPerPop
+xtest_rpp = model.matrix(rapesPerPop ~., CrimeTe)[,-1]
+xcrime_rpp = model.matrix(rapesPerPop ~., crimedata)[,-1]
+ycrime_rpp = crimedata$rapesPerPop
+set.seed(1)
+
+library(glmnet)
+#Cross Validation
+cv.outrpp = cv.glmnet(x_rpp, y_rpp, alpha = 1)
+
+#Predicting Model
+lasso.predrpp = predict(cv.outrpp, s = cv.outrpp$lambda.min, newx = xtest_rpp)
+mean_rpp =mean((lasso.predrpp - CrimeTe$rapesPerPop)^2)
+
+#Fitting Model
+fit_rpp = glmnet(xcrime,ycrime, alpha = 1)
+
+#Finding the Valuable Variables 
+lasso.coef_rpp = predict(fit_rpp,type = 'coefficients',s = cv.outrpp$lambda.min)[1:142,]
+
+```
+
+4. Assaults per Population(app)
+
+```{r}
+x_app= model.matrix(assaultPerPop ~., CrimeTr)[,-1]
+y_app = CrimeTr$assaultPerPop 
+xtest_app = model.matrix(assaultPerPop  ~., CrimeTe)[,-1]
+xcrime_app = model.matrix(assaultPerPop  ~., crimedata)[,-1]
+ycrime_app = crimedata$assaultPerPop 
+set.seed(1)
+
+library(glmnet)
+#Cross Validation
+cv.outapp = cv.glmnet(x_app, y_app, alpha = 1)
+
+#Predicting Model
+lasso.predapp = predict(cv.outapp, s = cv.outapp$lambda.min, newx = xtest_app)
+
+#Test MSE
+mean((lasso.predapp - CrimeTe$burglPerPop)^2)
+
+#Fitting Model
+fit_app = glmnet(xcrime_app,ycrime_app, alpha = 1)
+
+#Finding the Valuable Variables 
+lasso.coefapp = predict(fit_app,type = 'coefficients',s = cv.outapp$lambda.min)[1:142,]
+
+```
+
+5. Larcenies per Population(lpp)
+```{r}
+xlpp= model.matrix(larcPerPop ~., CrimeTr)[,-1]
+ylpp = CrimeTr$larcPerPop
+xtest_lpp = model.matrix(larcPerPop ~., CrimeTe)[,-1]
+xcrime_lpp = model.matrix(larcPerPop ~., crimedata)[,-1]
+ycrime_lpp = crimedata$larcPerPop
+set.seed(1)
+
+library(glmnet)
+#Cross Validation
+cv.out_lpp = cv.glmnet(xlpp, ylpp, alpha = 1)
+
+#Predicting Model
+lasso.pred_lpp = predict(cv.out_lpp, s = cv.out_lpp$lambda.min, newx = xtest_lpp)
+mean((lasso.pred_lpp - CrimeTe$larcPerPop)^2)
+
+#Fitting Model
+lpp.out = glmnet(xcrime_lpp,ycrime_lpp, alpha = 1)
+
+#Finding the Valuable Variables 
+lasso.coeflpp = predict(lpp.out,type = 'coefficients',s = cv.out_lpp$lambda.min)[1:142,]
+
+```
+
+6. Auto Theif per population(atpp)
+```{r}
+xatpp= model.matrix(autoTheftPerPop ~., CrimeTr)[,-1]
+yatpp = CrimeTr$autoTheftPerPop
+xtest.atpp = model.matrix(autoTheftPerPop ~., CrimeTe)[,-1]
+xcrime.atpp = model.matrix(autoTheftPerPop ~., crimedata)[,-1]
+ycrime.atpp = crimedata$autoTheftPerPop
+set.seed(1)
+
+library(glmnet)
+#Cross Validation
+cv.outatpp = cv.glmnet(xatpp, yatpp, alpha = 1)
+
+#Predicting Model
+lasso.predatpp = predict(cv.outatpp, s = cv.outatpp$lambda.min, newx = xtest.atpp)
+
+#test MSE
+mean((lasso.predatpp - CrimeTe$autoTheftPerPop)^2)
+
+#Fitting Model
+atpp.out = glmnet(xcrime.atpp,ycrime.atpp, alpha = 1)
+
+#Finding the Valuable Variables 
+lasso.coefatpp = predict(atpp.out,type = 'coefficients',s = cv.outatpp$lambda.min)[1:142,]
+```
+
+7. Arson per Population(arpp)
+```{r}
+xarpp= model.matrix(arsonsPerPop ~., CrimeTr)[,-1]
+yarpp = CrimeTr$arsonsPerPop
+xtest.arpp = model.matrix(arsonsPerPop ~., CrimeTe)[,-1]
+xcrime.arpp = model.matrix(arsonsPerPop ~., crimedata)[,-1]
+ycrime.arpp = crimedata$arsonsPerPop
+set.seed(1)
+
+library(glmnet)
+#Cross Validation
+cv.outarpp = cv.glmnet(xarpp, yarpp, alpha = 1)
+
+#Predicting Model
+lasso.predarpp = predict(cv.outarpp, s = cv.outarpp$lambda.min, newx = xtest.arpp)
+
+#Test MSE 
+mean((lasso.predarpp - CrimeTe$arsonsPerPop)^2)
+
+#Fitting Model
+arpp.out = glmnet(xcrime.arpp,ycrime.arpp, alpha = 1)
+
+#Finding the Valuable Variables 
+lasso.coefarpp = predict(arpp.out,type = 'coefficients',s = cv.outarpp$lambda.min)[1:142,]
+```
+
+```{r}
+library(e1071)
+modelsvm = svm(murdPerPop ~racepctblack + PctRecentImmig + MedNumBR + PctVacantBoarded + PctHousNoPhone + NumStreet + PctPolicWhite + PctPolicBlack + PctPolicAsian + PctPolicMinor + PopDens + LemasPctPolicOnPatr + PolicBudgPerPop, CrimeTr)
+pred.svm = predict(modelsvm, newdata = CrimeTe)
+
+points(CrimeTe$racepctblack, )
+```
+
+
+
+
+
