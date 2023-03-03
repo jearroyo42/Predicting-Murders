@@ -1,0 +1,230 @@
+---
+title: "Math 180 Murder per Population Prediction"
+author: "Jessie Arroyo"
+date: "2022-12-05"
+output: html_document
+---
+
+## Reading the Data and Renaming some of the column names
+```{r Reading Data}
+CrimeData <- read.csv("~/Downloads/CrimeData/crimedata.csv", na.strings="?", stringsAsFactors=TRUE)
+colnames(CrimeData)[1] <- "Community Name" #Renaming
+colnames(CrimeData)[3] <- "County Code" #Renaming
+colnames(CrimeData)[4] <- "Community Code" #Renaming
+
+# Viewing Dimension of the Dataset
+dim(CrimeData)
+```
+
+## Using Min-Max standardization to normalize the data 
+```{r Data Pre Processing}
+library(caret)
+pp = preProcess(CrimeData, method = "range")
+crimedata = predict(pp, CrimeData)
+crimedata = na.omit(crimedata)
+
+#removing Community Name, State, Community Code 
+crimedata <- crimedata[ -c(1,0:5) ]
+
+#Viewing the amount of rows and columns
+ncol(crimedata)
+nrow(crimedata)
+
+```
+
+
+## Splitting the Data into training and testing. 
+```{r}
+set.seed(1)
+train = sample(nrow(crimedata), 0.6*nrow(crimedata)) #splitting the data
+CrimeTr = crimedata[train,] #Creating Training Data set
+CrimeTe = crimedata[-train,] # Creating test Data 
+dim(CrimeTr)
+dim(CrimeTe)
+```
+## Lasso Regression: (Jessie)
+
+```{r Murder Per Population}
+x= model.matrix(murdPerPop ~., CrimeTr)[,-1]
+y = CrimeTr$murdPerPop
+xtest = model.matrix(murdPerPop ~., CrimeTe)[,-1]
+
+
+set.seed(1)
+library(glmnet)
+
+# Fitting Model
+out <- glmnet(x,y, alpha = 1)
+plot(out)
+
+#Cross Validation
+cv.out = cv.glmnet(x, y, alpha = 1)
+plot(cv.out)
+
+#Predicting Model
+lasso.pred = predict(cv.out, s = cv.out$lambda.min, newx = xtest)
+
+# test MSE 
+mean((lasso.pred - CrimeTe$murdPerPop)^2)
+
+#Finding the Valuable Variables 
+lasso.coef = predict(out,type = 'coefficients',s = cv.out$lambda.min)[1:142,]
+
+# Variables that were Viewed to be important 
+lasso.coef[lasso.coef != 0]
+R2.murd = caret::R2(lasso.pred,CrimeTe$murdPerPop)
+cat("\nR2: ", R2.murd, "\nTest MSE:", mean((lasso.pred - CrimeTe$murdPerPop)^2))
+```
+
+## Plotting Correlation
+```{r Plotting correlation plot}
+library(corrplot)
+library(dplyr)
+
+#Murders
+murder_var <- crimedata %>% select(racepctblack, agePct65up, PctKidsBornNeverMar, PctRecentImmig, PersPerOwnOccHous, MedNumBR, PctVacantBoarded, MedYrHousBuilt, PctHousNoPhone, NumStreet, PctForeignBorn, LemasTotReqPerPop, PctPolicWhite, PolicAveOTWorked, LemasPctPolicOnPatr, PolicBudgPerPop, murdPerPop)
+murd <- cor(murder_var)
+corrplot(murd, method = 'color', order = 'alphabet', tl.cex = 0.5)
+```
+
+## Multilinear Regression (David)
+```{r LM Murder per Population}
+#Training data
+model.murd <- lm(murdPerPop ~ racepctblack +  agePct65up+ PctKidsBornNeverMar+ PctRecentImmig+ PersPerOwnOccHous+ MedNumBR+ PctVacantBoarded+ MedYrHousBuilt+ PctHousNoPhone+ NumStreet+ PctForeignBorn+ LemasTotReqPerPop+ PctPolicWhite+ PolicAveOTWorked+ LemasPctPolicOnPatr+ PolicBudgPerPop,data = CrimeTr)
+#Testing data
+pred.murder = predict(model.murd, newdata = CrimeTe)
+#Test MSE
+mean((pred.murder - CrimeTe$murdPerPop)^2)
+
+# Cross Validating
+set.seed(1)
+library(caret)
+train.control <-trainControl(method = "cv", number = 10)
+cv.model <- train(murdPerPop ~ racepctblack +  agePct65up+ PctKidsBornNeverMar+ PctRecentImmig+ PersPerOwnOccHous+ MedNumBR+ PctVacantBoarded+ MedYrHousBuilt+ PctHousNoPhone+ NumStreet+ PctForeignBorn+ LemasTotReqPerPop+ PctPolicWhite+ PolicAveOTWorked+ LemasPctPolicOnPatr+ PolicBudgPerPop,data = CrimeTr, method = "lm", trControl = train.control)
+cv.model
+summary(cv.model$finalModel)
+
+#Test MSE
+pred.cvmurd = predict(cv.model$finalModel, newdata = CrimeTe)
+mean((pred.cvmurd-CrimeTe$murdPerPop)^2)
+plot(cv.model$finalModel)
+postResample(pred.cvmurd, CrimeTe$murdPerPop)
+cat("Test MSE: ",mean((pred.cvmurd-CrimeTe$murdPerPop)^2))
+```
+
+#Removing Outlier to see if would improve
+```{r}
+library(caret)
+remove.outlier<-CrimeTr[-1582,]
+re <- CrimeTe[-1582,]
+
+model <- lm(murdPerPop ~ racepctblack +  agePct65up+ PctKidsBornNeverMar+ PctRecentImmig+ PersPerOwnOccHous+ MedNumBR+ PctVacantBoarded+ MedYrHousBuilt+ PctHousNoPhone+ NumStreet+ PctForeignBorn+ LemasTotReqPerPop+ PctPolicWhite+ PolicAveOTWorked+ LemasPctPolicOnPatr+ PolicBudgPerPop,data = remove.outlier)
+summary(model)
+pred <- predict(model, re )
+mean((pred-re$murdPerPop)^2)
+postResample(pred, re$murdPerPop)
+
+```
+# Combining Highly Multicollinear variables into one 
+```{r}
+model.inter <- lm(murdPerPop ~ racepctblack+racepctblack*PctPolicWhite + racepctblack*PctVacantBoarded+ agePct65up+ PctKidsBornNeverMar+ +PctKidsBornNeverMar*NumStreet+ PctKidsBornNeverMar*PctVacantBoarded+ PctRecentImmig+ PersPerOwnOccHous+ MedNumBR+ PctVacantBoarded+ MedYrHousBuilt+ PctHousNoPhone+PctHousNoPhone*PctVacantBoarded+  NumStreet+ PctForeignBorn*PctRecentImmig+PctForeignBorn + LemasTotReqPerPop+ PctPolicWhite+ PolicAveOTWorked+ LemasPctPolicOnPatr+ PolicBudgPerPop,data =CrimeTr)
+summary(model.inter)
+pred.inter <- predict(model.inter, newdata = CrimeTe)
+mean((pred.inter - CrimeTe$murdPerPop)^2)
+postResample(pred.inter, CrimeTe$murdPerPop)
+```
+
+## K Nearest Neighbors (Oscar)
+```{r KNN murder per population}
+library(caret)
+set.seed(1)
+x_train = CrimeTr[c(3, 10, 51, 57, 71, 75, 77, 78, 93, 94, 104, 108, 115, 121, 124)]
+y_train = CrimeTr$murdPerPop
+x_test = CrimeTe[c(3, 10, 51, 57, 71, 75, 77, 78, 93, 94, 104, 108, 115, 121, 124)]
+y_test = CrimeTe$murdPerPop
+
+#CV the model 
+cv.knnmurd <- train(murdPerPop ~ racepctblack +  agePct65up+ PctKidsBornNeverMar+ PctRecentImmig+ PersPerOwnOccHous+ MedNumBR+ PctVacantBoarded+ MedYrHousBuilt+ PctHousNoPhone+ NumStreet+ PctForeignBorn+ LemasTotReqPerPop+ PctPolicWhite+ PolicAveOTWorked+ LemasPctPolicOnPatr+ PolicBudgPerPop,data = CrimeTr, method = "knn", trControl = trainControl(method = "cv", number = 10), tuneLength = 10)
+cv.knnmurd
+plot(cv.knnmurd)
+
+#Fitting With CV 
+knn.murd <- knnreg(x_train, y_train, k = 5)
+pred_ymurd = predict(knn.murd, x_test)
+
+mse = mean((pred_ymurd- y_test)^2)
+postResample(pred_ymurd, CrimeTe$murdPerPop)
+cat("MSE: ", mse)
+
+x = 1:length(y_test)
+plot(x, y_test, col = "red", type = "l", lwd=2,
+     main = "Murder per Population Prediction", xlab = "Sample Size", ylab = "Actual Murder per Population")
+lines(x, pred_ymurd, col = "blue", lwd=2)
+legend("topright",  legend = c("Actual-Murder per Population", "predicted-Murder per Population"), 
+       fill = c("red", "blue"), col = 2:3,  adj = c(0, 0.6))
+grid() 
+```
+
+
+## Random Forest (Rebecca)
+```{r RF Murders Per Population}
+#new set of data only having the predictors that LASSO said were important
+murdPredictors = crimedata[c(3, 10, 51, 57, 71, 75, 77, 78, 93, 94, 104, 108, 115, 121, 124, 126)]
+#Creating the trees
+library(randomForest)
+set.seed(1)
+
+murder.crime.rf.train <- randomForest( murdPerPop ~ ., data = murdPredictors, subset = train, mtry = 12, importance = TRUE)
+yhat.murder <- predict(murder.crime.rf.train, newdata = crimedata[-train, ])
+mean((yhat.murder - CrimeTe$murdPerPop)^2)
+#Seeing what the importance of each of the predictors were
+importance(murder.crime.rf.train)
+varImpPlot(murder.crime.rf.train, cex = 0.5)
+murder.crime.rf.train
+library(caret)
+postResample(yhat.murder, CrimeTe$murdPerPop)
+cat("Test MSE: ",mean((yhat.murder - CrimeTe$murdPerPop)^2))
+
+```
+
+
+## Regression Trees(Jessie)
+```{r RT murder per population}
+set.seed(1)
+library(tree)
+tree.murder <-tree(murdPerPop ~ ., data = murdPredictors, subset = train)
+summary(tree.murder)
+plot(tree.murder)
+text(tree.murder, pretty = 0)
+title(main = "Unprunned Tree")
+
+#Checking if prunning will improve peformance
+cv.murder <- cv.tree(tree.murder, K = 10)
+plot(cv.murder$size, (cv.murder$dev), type = "b", xlab = "Tree Size", ylab = "CV-Error Rate")
+
+#Prunning the tree
+prune.murd <- prune.tree(tree.murder, best = 4)
+plot(prune.murd)
+text(prune.murd, pretty = 0)
+title("Prunned Pree")
+
+# Test Set MSE using Unpruned Tree
+yhat.treemurd <- predict(tree.murder, newdata = CrimeTe)
+plot(yhat.treemurd, CrimeTe$murdPerPop, xlab = "Predicted Unprunned Murders per Population", ylab = "Actual Murders per Population")
+abline(0,1)
+
+unprunemse = mean((yhat.treemurd - CrimeTe$murdPerPop)^2)
+
+postResample(yhat.treemurd, CrimeTe$murdPerPop)
+
+cat("Unprunned Prunned Test MSE: ", unprunemse)
+
+# TEST MSE for Prunned Tree
+yhat.prunemurd <- predict(prune.murd, newdata = CrimeTe)
+prunemse = mean((yhat.prunemurd - CrimeTe$murdPerPop)^2)
+plot(yhat.prunemurd, CrimeTe$murdPerPop, xlab = "Predicted Prunned Murders per Population", ylab = "Actual Murders per Population")
+abline(0,1)
+
+postResample(yhat.prunemurd, CrimeTe$murdPerPop) #Prunned
+cat("Prunned Test MSE: ", prunemse)
+```
