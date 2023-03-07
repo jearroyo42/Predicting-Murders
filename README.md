@@ -3,23 +3,17 @@ Group Members: Oscar Cortes, Jessie Arroyo, David Lee, Rebecca Serrato
 
 Data: http://archive.ics.uci.edu/ml/datasets/communities+and+crime+unnormalized
 
-This is my Data Analysis project for the course Math 180 offered by UC Merced. 
-My contributions to this project are loading in the data, splitting the data, normalizing the data and peforming Lasso Regression onto the data. 
-I peformed a Lasso regression to the Unnormalized Crime and Communities Data set offered by the UC Irvine Machine Learning Reporository to see which predictors are the most important to our analysis. 
-During my regression, for each response variable Y, murder, arson, and etc, we found there had been different predictors for each in which we had to view in the scope of our research. 
-Our research questions: 
-Does a Socioeconomic Status of a Community Play a Role in Crime Rate in the U.S.?
-How can Law Enforcements reduce socioeconomic disparities among these communities? What are resources that the government can provide to reduce the crime rates in cities?
+This is a summary of my data analysis project completed for the Math 180 course at UC Merced. As part of this project, I contributed to critical data preparation tasks, including data loading, splitting, and normalization, in addition to performing Lasso Regression on the Unnormalized Crime and Communities Data set from the UC Irvine Machine Learning Repository.
 
-Memo Updates Regarding our Research Data Analysis
+Through the application of Lasso Regression, we aimed to identify the most influential predictors in relation to murders in a population, and subsequently, investigated possible independent variables that may contribute to this response variable. To further our understanding of the data, we utilized a Regression tree, allowing us to visualize the contributing factors of violent crime and potential measures for preventing such crimes from occurring. Our response variable was measured in terms of murder per population, and we investigated different possible independent variables that may have contributed to the occurrence of this response variable.
 
-Memo 1: 
-https://docs.google.com/document/d/13lCvZc3PY5yo6LB_TG2rhRmvsEinn2YYTEhQmWogny4/edit?usp=sharing
+Working collaboratively as a group, we explored other models, including K-Nearest Neighbors, Random Forest, and Linear Regression, with a focus on optimizing results for easy readability and interpretation. Specifically, my Regression Tree model demonstrated exceptional performance, with a low error rate of 0.007030662.
 
-Memo 2: 
-https://docs.google.com/document/d/1vzXhrC6LYjBd90mvv3jovo2Skd3SYdFGONImV1qL2p4/edit?usp=sharing
+To accomplish this project, we utilized multiple packages and libraries in R Studio, including RandomForest, caret, glmnet, dplyr, corrplot, and tree, enabling us to model and visualize the dataset effectively. Our research questions revolved around the impact of a community's socioeconomic status on crime rates in the U.S., and potential strategies that law enforcement and government can implement to reduce crime rates in cities.
 
-Memo 3: 
-Coming soon
+In conclusion, this project represents a comprehensive and rigorous examination of crime and community data, utilizing advanced statistical techniques to provide valuable insights and actionable recommendations for addressing violent crime.
 
-Research Paper Coming Soon
+
+
+
+
